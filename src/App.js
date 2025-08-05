@@ -3,41 +3,93 @@ import axios from 'axios';
 
 function App() {
   const [inputText, setInputText] = useState('');
-  const [summary,   setSummary]   = useState('');
+  const [summary, setSummary] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const summarizeText = async () => {
-    const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-    const url    = 
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    if (!inputText.trim()) {
+      setError('Please enter some text to summarize');
+      return;
+    }
 
-      const prompt = `Summarize content you are provided with for a second-grade student: 
-      ${inputText}`.trim();
-      
+    setLoading(true);
+    setError('');
+    setSummary('');
+
     try {
-      const { data } = await axios.post(
-        `${url}?key=${apiKey}`,                      // pass key in URL :contentReference[oaicite:9]{index=9}
-        { contents: [{ parts: [{ text: prompt }] }] },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+      const response = await axios.post('http://localhost:5000/api/summarize', {
+        text: inputText
+      });
 
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      setSummary(text);
+      setSummary(response.data.summary);
     } catch (err) {
       console.error('API error:', err);
+      setError(err.response?.data?.error || 'Failed to summarize text');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
       <h1>Text Summarizer</h1>
-      <textarea
-        rows={10}
-        cols={50}
-        value={inputText}
-        onChange={e => setInputText(e.target.value)}
-      />
-      <button onClick={summarizeText}>Summarize</button>
-      <pre>{summary}</pre>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <textarea
+          rows={10}
+          cols={50}
+          value={inputText}
+          onChange={e => setInputText(e.target.value)}
+          placeholder="Enter text to summarize..."
+          style={{ width: '100%', padding: '10px', fontSize: '14px' }}
+        />
+      </div>
+
+      <button 
+        onClick={summarizeText}
+        disabled={loading || !inputText.trim()}
+        style={{
+          padding: '10px 20px',
+          fontSize: '16px',
+          backgroundColor: loading ? '#ccc' : '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: loading ? 'not-allowed' : 'pointer'
+        }}
+      >
+        {loading ? 'Summarizing...' : 'Summarize'}
+      </button>
+
+      {error && (
+        <div style={{ 
+          marginTop: '20px', 
+          padding: '10px', 
+          backgroundColor: '#f8d7da', 
+          color: '#721c24',
+          border: '1px solid #f5c6cb',
+          borderRadius: '4px'
+        }}>
+          Error: {error}
+        </div>
+      )}
+
+      {summary && (
+        <div style={{ marginTop: '20px' }}>
+          <h3>Summary:</h3>
+          <div style={{
+            padding: '15px',
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px',
+            whiteSpace: 'pre-wrap',
+            lineHeight: '1.5'
+          }}>
+            {summary}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
